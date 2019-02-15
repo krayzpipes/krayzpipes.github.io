@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="author" content="Kyle Piper">
+  <meta name="description" content="Asyncing Feeling | Why asynchronous programming in Python? Microsoft. That&#39;s why. In order to get some visibility into Microsoft Office 365 Management...">
+
+  <link rel="icon" type="image/png" href="/favicon-16x16.png" sizes="16x16">
+  <link rel="icon" type="image/png" href="/favicon-32x32.png" sizes="32x32">  
+  <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96">
+  
+  <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.6/css/bootstrap.min.css" type="text/css" media="all">
+  <link rel="stylesheet" href="/theme/css/font.css" type="text/css" media="all">
+  <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+  <link rel="stylesheet" href="/theme/css/style.css" type="text/css" media="all">
+
+  <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/jquery/1.12.3/jquery.min.js"></script>
+  <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/modernizr/2.8.3/modernizr.min.js"></script>
+  <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.6/js/bootstrap.min.js"></script>
+  <script type="text/javascript" src="/theme/js/functions.min.js"></script>
+
+  
+ 
+
+
+<meta name="keywords" content="python, asyncio, api">
+
+<meta property="og:title" content="Asyncing Feeling">
+<meta property="og:type" content="website">
+<meta property="og:image" content="/"/>
+<meta property="og:image:secure_url" content="/"/>
+<meta property="og:site_name" content="">
+<meta property="og:description" content="It's difficult to change from a single-threaded mindest to an asynchronous mindset in Python. Today, I will share the mind model I use when programming asynchronously in Python in hopes it will hehlp you side-step the learning curve.">
+<meta property="og:url" content="http:///articles/A mind model for thinking about asyncio in python..html">
+<meta property="fb:admins" content=""/>
+<meta property="fb:app_id" content=""/>
+<script src="/theme/js/lw-timeago.25926835.min.js" type="text/javascript"></script>
+
+  <title>Asyncing Feeling</title>
+
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-134364467-1', 'auto');
+  ga('send', 'pageview');
+
+</script>
+  
+</head>
+
+<body class="home blog">
+  <div>
+    <header class="site-header">
+      <nav class="navbar navbar-default" role="navigation">
+        <div class="container">
+          <div class="row">
+            <div class="site-navigation-inner col-sm-12">
+              <div class="navbar-header">
+                <button type="button" class="btn navbar-toggle" data-toggle="collapse" data-target=".navbar-ex1-collapse">
+                  <span class="sr-only">Toggle navigation</span>
+                  <span class="icon-bar"></span>
+                  <span class="icon-bar"></span>
+                  <span class="icon-bar"></span>
+                </button>
+              </div>
+              <div class="collapse navbar-collapse navbar-ex1-collapse">
+              <ul id="menu-all-pages" class="nav navbar-nav">
+                <li class="menu-item"><a href="/index.html" >Home
+<i class="fa  fa-lg"></i></a></li>
+                <li class="menu-item"><a href="/pages/about.html" >About
+<i class="fa  fa-lg"></i></a></li>
+              </ul>
+              </div>
+              <div class="social">
+                <a href="http://github.com/krayzpipes" title="GitHub" >
+<i class="fa fa-github fa-lg"></i></a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </nav><!-- .site-navigation -->
+
+      <div class="container">
+      <div id="logo" style="padding: 0 0 0 0;">
+	      <?xml version="1.0" standalone="no"?>
+<!-- Generator: SVG Circus (http://svgcircus.com) -->
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg id="SVG-Circus-473fb1cb-4e8c-f0cc-58d5-58732aca8d0b" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" width="200" height="150"><polygon id="actor_13" points="22.00,43.00 15.94,46.50 15.94,53.50 22.00,57.00 28.06,53.50 28.06,46.50" opacity="1" fill="rgba(14,138,246,1)" fill-opacity="1" stroke="rgba(166,3,17,1)" stroke-width="0" stroke-opacity="1" stroke-dasharray=""></polygon><polygon id="actor_12" points="29.00,31.00 22.94,34.50 22.94,41.50 29.00,45.00 35.06,41.50 35.06,34.50" opacity="1" fill="rgba(14,138,246,1)" fill-opacity="1" stroke="rgba(166,3,17,1)" stroke-width="0" stroke-opacity="1" stroke-dasharray=""></polygon><polygon id="actor_11" points="71.00,55.00 64.94,58.50 64.94,65.50 71.00,69.00 77.06,65.50 77.06,58.50" opacity="1" fill="rgba(14,138,246,1)" fill-opacity="1" stroke="rgba(166,3,17,1)" stroke-width="0" stroke-opacity="1" stroke-dasharray=""></polygon><polygon id="actor_10" points="29.00,55.00 22.94,58.50 22.94,65.50 29.00,69.00 35.06,65.50 35.06,58.50" opacity="1" fill="rgba(14,138,246,1)" fill-opacity="1" stroke="rgba(166,3,17,1)" stroke-width="0" stroke-opacity="1" stroke-dasharray=""></polygon><polygon id="actor_9" points="78.00,43.00 71.94,46.50 71.94,53.50 78.00,57.00 84.06,53.50 84.06,46.50" opacity="1" fill="rgba(14,138,246,1)" fill-opacity="1" stroke="rgba(166,3,17,1)" stroke-width="0" stroke-opacity="1" stroke-dasharray=""></polygon><polygon id="actor_8" points="71.00,31.00 64.94,34.50 64.94,41.50 71.00,45.00 77.06,41.50 77.06,34.50" opacity="1" fill="rgba(14,138,246,1)" fill-opacity="1" stroke="rgba(166,3,17,1)" stroke-width="0" stroke-opacity="1" stroke-dasharray=""></polygon><polygon id="actor_7" points="57.00,31.00 50.94,34.50 50.94,41.50 57.00,45.00 63.06,41.50 63.06,34.50" opacity="1" fill="rgba(14,138,246,1)" fill-opacity="1" stroke="rgba(166,3,17,1)" stroke-width="0" stroke-opacity="1" stroke-dasharray=""></polygon><polygon id="actor_6" points="43.00,31.00 36.94,34.50 36.94,41.50 43.00,45.00 49.06,41.50 49.06,34.50" opacity="1" fill="rgba(14,138,246,1)" fill-opacity="1" stroke="rgba(166,3,17,1)" stroke-width="0" stroke-opacity="1" stroke-dasharray=""></polygon><polygon id="actor_5" points="57.00,55.00 50.94,58.50 50.94,65.50 57.00,69.00 63.06,65.50 63.06,58.50" opacity="1" fill="rgba(14,138,246,1)" fill-opacity="1" stroke="rgba(166,3,17,1)" stroke-width="0" stroke-opacity="1" stroke-dasharray=""></polygon><polygon id="actor_4" points="43.00,55.00 36.94,58.50 36.94,65.50 43.00,69.00 49.06,65.50 49.06,58.50" opacity="1" fill="rgba(14,138,246,1)" fill-opacity="1" stroke="rgba(166,3,17,1)" stroke-width="0" stroke-opacity="1" stroke-dasharray=""></polygon><polygon id="actor_3" points="64.00,43.00 57.94,46.50 57.94,53.50 64.00,57.00 70.06,53.50 70.06,46.50" opacity="1" fill="rgba(14,138,246,1)" fill-opacity="1" stroke="rgba(166,3,17,1)" stroke-width="0" stroke-opacity="1" stroke-dasharray=""></polygon><polygon id="actor_2" points="36.00,43.00 29.94,46.50 29.94,53.50 36.00,57.00 42.06,53.50 42.06,46.50" opacity="1" fill="rgba(14,138,246,1)" fill-opacity="1" stroke="rgba(166,3,17,1)" stroke-width="0" stroke-opacity="1" stroke-dasharray=""></polygon><polygon id="actor_1" points="50.00,43.00 43.94,46.50 43.94,53.50 50.00,57.00 56.06,53.50 56.06,46.50" opacity="1" fill="rgba(14,138,246,1)" fill-opacity="1" stroke="rgba(166,3,17,1)" stroke-width="0" stroke-opacity="1" stroke-dasharray=""></polygon><script type="text/ecmascript"><![CDATA[(function(){var actors={};actors.actor_1={node:document.getElementById("SVG-Circus-473fb1cb-4e8c-f0cc-58d5-58732aca8d0b").getElementById("actor_1"),type:"polygon",cx:50,cy:50,dx:15,dy:9,opacity:1};actors.actor_2={node:document.getElementById("SVG-Circus-473fb1cb-4e8c-f0cc-58d5-58732aca8d0b").getElementById("actor_2"),type:"polygon",cx:36,cy:50,dx:15,dy:9,opacity:1};actors.actor_3={node:document.getElementById("SVG-Circus-473fb1cb-4e8c-f0cc-58d5-58732aca8d0b").getElementById("actor_3"),type:"polygon",cx:64,cy:50,dx:15,dy:9,opacity:1};actors.actor_4={node:document.getElementById("SVG-Circus-473fb1cb-4e8c-f0cc-58d5-58732aca8d0b").getElementById("actor_4"),type:"polygon",cx:43,cy:62,dx:15,dy:9,opacity:1};actors.actor_5={node:document.getElementById("SVG-Circus-473fb1cb-4e8c-f0cc-58d5-58732aca8d0b").getElementById("actor_5"),type:"polygon",cx:57,cy:62,dx:15,dy:9,opacity:1};actors.actor_6={node:document.getElementById("SVG-Circus-473fb1cb-4e8c-f0cc-58d5-58732aca8d0b").getElementById("actor_6"),type:"polygon",cx:43,cy:38,dx:15,dy:9,opacity:1};actors.actor_7={node:document.getElementById("SVG-Circus-473fb1cb-4e8c-f0cc-58d5-58732aca8d0b").getElementById("actor_7"),type:"polygon",cx:57,cy:38,dx:15,dy:9,opacity:1};actors.actor_8={node:document.getElementById("SVG-Circus-473fb1cb-4e8c-f0cc-58d5-58732aca8d0b").getElementById("actor_8"),type:"polygon",cx:71,cy:38,dx:15,dy:9,opacity:1};actors.actor_9={node:document.getElementById("SVG-Circus-473fb1cb-4e8c-f0cc-58d5-58732aca8d0b").getElementById("actor_9"),type:"polygon",cx:78,cy:50,dx:15,dy:9,opacity:1};actors.actor_10={node:document.getElementById("SVG-Circus-473fb1cb-4e8c-f0cc-58d5-58732aca8d0b").getElementById("actor_10"),type:"polygon",cx:29,cy:62,dx:15,dy:9,opacity:1};actors.actor_11={node:document.getElementById("SVG-Circus-473fb1cb-4e8c-f0cc-58d5-58732aca8d0b").getElementById("actor_11"),type:"polygon",cx:71,cy:62,dx:15,dy:9,opacity:1};actors.actor_12={node:document.getElementById("SVG-Circus-473fb1cb-4e8c-f0cc-58d5-58732aca8d0b").getElementById("actor_12"),type:"polygon",cx:29,cy:38,dx:15,dy:9,opacity:1};actors.actor_13={node:document.getElementById("SVG-Circus-473fb1cb-4e8c-f0cc-58d5-58732aca8d0b").getElementById("actor_13"),type:"polygon",cx:22,cy:50,dx:15,dy:9,opacity:1};var tricks={};tricks.trick_1=(function(_,t){t=(function(t){return.5*(1-Math.cos(Math.PI*t))})(t)%1,t=0>t?1+t:t;var i;i=0.54>=t?1.1-(1.1-1)/0.54*t:t>=0.59?1+(t-0.59)*((1.1-1)/(1-0.59)):1;var a=_._tMatrix,r=-_.cx*i+_.cx,x=-_.cy*i+_.cy,n=a[0]*i,c=a[1]*i,M=a[2]*i,g=a[3]*i,f=a[0]*r+a[2]*x+a[4],m=a[1]*r+a[3]*x+a[5];_._tMatrix[0]=n,_._tMatrix[1]=c,_._tMatrix[2]=M,_._tMatrix[3]=g,_._tMatrix[4]=f,_._tMatrix[5]=m});var scenarios={};scenarios.scenario_1={actors: ["actor_1","actor_2","actor_3","actor_4","actor_5","actor_6","actor_7","actor_8","actor_9","actor_10","actor_11","actor_12","actor_13"],tricks: [{trick: "trick_1",start:0.00,end:1.00}],startAfter:0,duration:2000,actorDelay:140,repeat:0,repeatDelay:3000};var _reqAnimFrame=window.requestAnimationFrame||window.mozRequestAnimationFrame||window.webkitRequestAnimationFrame||window.oRequestAnimationFrame,fnTick=function(t){var r,a,i,e,n,o,s,c,m,f,d,k,w;for(c in actors)actors[c]._tMatrix=[1,0,0,1,0,0];for(s in scenarios)for(o=scenarios[s],m=t-o.startAfter,r=0,a=o.actors.length;a>r;r++){if(i=actors[o.actors[r]],i&&i.node&&i._tMatrix)for(f=0,m>=0&&(d=o.duration+o.repeatDelay,o.repeat>0&&m>d*o.repeat&&(f=1),f+=m%d/o.duration),e=0,n=o.tricks.length;n>e;e++)k=o.tricks[e],w=(f-k.start)*(1/(k.end-k.start)),tricks[k.trick]&&tricks[k.trick](i,Math.max(0,Math.min(1,w)));m-=o.actorDelay}for(c in actors)i=actors[c],i&&i.node&&i._tMatrix&&i.node.setAttribute("transform","matrix("+i._tMatrix.join()+")");_reqAnimFrame(fnTick)};_reqAnimFrame(fnTick);})()]]></script></svg>
+	      <!--
+        <span class="site-name"><a class="navbar-brand" href=""><img width="160" src="/images/ToonRectangle.png" class="attachment-full size-full" alt="logo">          </a>
+	</span>--><!-- end of .site-name -->
+      </div><!-- end of #logo -->
+        <div class="tagline">
+                <a href="/tag/api.html" >api (1)</a> &#124; 
+                <a href="/tag/asyncio.html" >asyncio (1)</a> &#124; 
+                <a href="/tag/python.html" >python (1)</a> &#124; 
+                <a href="/archives.html" >Archives (1)</a>
+        </div>
+    </div>
+
+  </header><!-- #masthead -->
+  </div>
+    <div id="content" class="site-content">
+      <div class="container main-content-area" style="margin-top: 5px;">
+        <div class="row">
+          <div class="main-content-inner col-sm-12 col-md-12">
+            <div id="primary" class="content-area">
+              <div id="main" class="site-main" role="main">
+                <div class="article-container">
+<article>
+  <div class="blog-item-wrap">
+    <div class="post-inner-content">
+      <header class="entry-header page-header">
+        <span class="cat-item"><time datetime="2019-02-12 02:23:00-05:00">Tue 12 February 2019</time></span>
+        <h1 class="entry-title"><a href="/A mind model for thinking about asyncio in python..html">Asyncing Feeling</a></h1>
+      </header><!-- .entry-header -->
+      <div class="fb-like" data-href="/A mind model for thinking about asyncio in python..html" data-layout="standard" data-action="like" data-show-faces="false" data-share="true"></div>
+      <div class="entry-content">
+        <h2>Why asynchronous programming in Python?</h2>
+<p>Microsoft. That's why.</p>
+<p>In order to get some visibility into Microsoft Office 365 Management API logs I needed
+to come up with a way to ingest logs from the API. After fighting
+with the Microsoft documentation for a couple days, I finally had a script working:
+1. Start a subscription to the Microsoft service (ex: Audit.Exchange logs)
+2. Get a list of log endpoints where I could pull down the logs from.
+3. Go to each of those log endpoints and pull down the logs.
+4. Write the logs to file.</p>
+<p>I scheduled the script with a cronjob and let it run. I then tailed the logs with a log forwarder so
+we could get logs sent to our log aggregator / SIEM backend.</p>
+<p>This worked well until one of our customers with several thousand users decided to bog down
+the script. Apparently the script was taking so long to run that the next scheduled cronjob would kick off
+before the first run was completed. As you can imagine, this snowballed until all the resources were
+gone on our script server.</p>
+<p>One solution would be to use something like 'flock' or a 'PID' file to make sure the script didn't step
+on its own toes. The problem is that it would take so long for the script to run that the time delta between
+runs would keep growing until our log aggregation was so far behind that it was useless for security purposes.</p>
+<p>One of the organizers of a developers guild I have been testing out mentioned the asyncio library a few weeks
+before. I figured if I could somehow make all these API calls in an asynchronous fashion, I'd be able to
+solve my long-running-script problem.</p>
+<h2>The Hurdle</h2>
+<p>In the past, I had scripted during my tenure as a Network Security Engineer; However, my scripts for the
+job requirements at thet time did not require asynchronous programming. It only required sequential execution
+of code.</p>
+<p>The biggest hurdle that came from this was the shift in mindset to asynchronous programming.</p>
+<h3>Global Interpreter Lock</h3>
+      </div><!-- .entry-content -->
+      <br /><br />
+      <div class="article_meta">
+        Tags:
+          <a href="/tag/python.html">python</a>,          <a href="/tag/asyncio.html">asyncio</a>,          <a href="/tag/api.html">api</a>      </div>
+    </div>
+  </div>
+</article><!-- #post-## -->
+                </div>
+              </div><!-- #main -->
+          </div><!-- #primary -->
+        </div>
+      </div><!-- close .row -->
+    </div><!-- close .container -->
+  </div><!-- close .site-content -->
+
+
+
+
+  <div id="footer-area">
+    <footer id="colophon" class="site-footer" role="contentinfo">
+      <div class="site-info container">
+        <div class="row">
+                    <div class="copyright col-md-12">
+                    <a href="/pages/privacy-policy">Privacy Policy</a> | 
+                    <a href="/feeds/all.atom.xml">Atom Feed</a> | 
+                    <a href="/sitemap.xml">Sitemap</a><br />
+                    This site uses the <a href="https://github.com/limbenjamin/voce">voce</a> theme by <a href="//limbenjamin.com/">Benjamin Lim</a><br />
+                    &copy; 2012-2016 <a href="">Kyle Piper</a> </div>
+        </div>
+      </div><!-- .site-info -->
+      <div class="scroll-to-top" style="display: none;"><i class="fa fa-angle-up"></i></div><!-- .scroll-to-top -->
+    </footer><!-- #colophon -->
+  </div>
+
+  <script type="text/javascript">
+    window.addEventListener('load', function(){
+    if (window.location.pathname != '/' && window.location.pathname != '/index.html'){
+      window.scroll(0, document.getElementById('main').offsetTop);
+    }})
+  </script>
+
+
+
+
+<script type="text/javascript">window.addEventListener("load", lw_timeago);</script>
+</body>
+</html>

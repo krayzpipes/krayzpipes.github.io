@@ -5,7 +5,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="author" content="Kyle Piper">
-  <meta name="description" content="Asyncing Feeling | The Back Story &#34;Logging alert - Microsoft Cloud Logs&#34; was the subject of an email that slid into my inbox one morning. I put the...">
+  <meta name="description" content="Asyncing Feeling | The Back Story &#34;Logging alert - Microsoft Cloud Logs&#34; was the subject of an email that slid into my inbox one morning. The alert...">
 
   <link rel="icon" type="image/png" href="/favicon-16x16.png" sizes="16x16">
   <link rel="icon" type="image/png" href="/favicon-32x32.png" sizes="32x32">  
@@ -33,7 +33,7 @@
 <meta property="og:image" content="/"/>
 <meta property="og:image:secure_url" content="/"/>
 <meta property="og:site_name" content="">
-<meta property="og:description" content="It's difficult to change from a single-threaded mindset to an asynchronous/concurrency mindset in Python. I'm sharing the mental model I use when programming asynchronously with Python in hopes it will help others side-step the learning curve.">
+<meta property="og:description" content="Concepts and terminology for the asyncio library is confusing if you have never programmed for concurrency before. I'm sharing how I think about the asyncio library when programming for concurency in Python in hopes that it may help others side-step the learning curve.">
 <meta property="og:url" content="http:///articles/asyncing-feeling.html">
 <meta property="fb:admins" content=""/>
 <meta property="fb:app_id" content=""/>
@@ -127,143 +127,114 @@
       </header><!-- .entry-header -->
       <div class="fb-like" data-href="/asyncing-feeling.html" data-layout="standard" data-action="like" data-show-faces="false" data-share="true"></div>
       <div class="entry-content">
-        <h1>The Back Story</h1>
+        <h2>The Back Story</h2>
 <p>"Logging alert - Microsoft Cloud Logs" was the subject of an email that slid into my inbox one morning.
-I put the project I was eager to work on aside in order to address the alert. The alert said
-that we had not received Microsoft O365 logs for over an hour. Given that the company in question
-consisted of thousands of users and email accounts, that did not seem right.</p>
+The alert content said that we had not received Microsoft O365 logs for over an hour. Given that the company
+in question consisted of thousands of users, that did not seem right.</p>
 <h3>Finding the cause</h3>
 <p>I jumped onto the server which hosted a script I had written to pull down Microsoft O365 logs. The
-server was pegged. I ran a quick <code>ps -aux</code> and there was a legion of python processes </p>
-<p>It appeared that the python script was unable to finish before the next cron job was scheduled to kick it
-off again. In order to fix this issue, I worked through some possible fixes:</p>
-<ul>
-<li>Extend the time frame between cron job runs.<ul>
-<li>While this seems like a simple fix, it doesn't address the fact that I have more logs being generated
-than I can pull down with the script in any given time frame.</li>
-</ul>
-</li>
-<li>Ensure the cron job doesn't kick off a new process if the old one hasn't completed with <code>flock</code>
-or a PID file.<ul>
-<li>This also seemed like a quick fix at first. While this would keep the script from stepping on its
-own toes, it does not help the script pull down the same volume of logs faster. The
-first run might take 12 minutes, then the second would take 15 minutes, etc. It would be a snowball
-effect.</li>
-</ul>
-</li>
-<li>Figure out a way to pull down logs faster<ul>
-<li>In the end, it became apparent that my script just wasn't fast enough. I needed to find a way to
-speed it up.</li>
-</ul>
-</li>
-</ul>
-<h3>Where I went wrong</h3>
-<p>Microsoft O365 logs were really a perfect storm in this scenario:</p>
-<ol>
-<li>Query the O365 Management API for a list of URLs where the logs I care about are.<ul>
-<li>This had to be done for each log type. Ex: Exchange, Azure AD, Sharepoint, etc.</li>
-<li>The script specifies a time range. The default is ten minutes.</li>
-<li>The script saved the end time of each run so that in the event of a server or API failure, the
-script would pick up right where it left off last time.</li>
-<li>For a head count of several thousand, this would result in hundreds or thousands of URLs where
-logs would need to be retrieved.</li>
-</ul>
-</li>
-<li>Make an API call to each individual URL to pull down whatever logs were available
-there.</li>
-<li>Write the logs to file so that they could be forwarded and indexed by our log aggregator.</li>
-</ol>
-<p>With a normal python script, each API call would be made one right after the other. During the time frame
-between an API call and the response, the script just sits there because Python is single-threaded
-by design.</p>
-<p>If I could program for concurrency in Python, I would be able to pull down each log location in parallel
-to one another and not waste time 'blocking' the rest of the URLs from being queried.</p>
+server was pegged. I ran a quick <code>ps -aux</code> and there was a legion of processes associated with the
+O365 Python script. It appeared that the python script was unable to finish before the next cron job was
+scheduled to kick it off again.</p>
+<p>As I thought about how to tackle this problem, I came to the conclusion that my script
+just wasn't fast enough. Logs were being generated faster than I could pull them down.</p>
+<p>A summary of the process in pulling down logs via the Microsoft O365 Management API:
+1. You can pull down logs for multiple log types (Exchange, Azure AD, SharePoint, etc.)
+2. For each log type, the API will give you a list of all the various URLs/endpoints that contain the logs in
+the time frame you specify.
+3. You have to go to each of those endpoints and pull down the logs that reside there. Sometimes tens, hundreds,
+or thousands.</p>
+<p>If you have a company with thousands of users, this process pumps a lot of HTTP requests to Microsoft.</p>
+<p>Python (or at least CPython) is designed to be single-threaded. In the case of our O365 logs, it means that
+when I make an API call to 1 of 500 URLs where my logs reside (step 3 above), I have to wait until I get a
+response before I can reach out to the second URL. In other words, each call to the API is
+'blocking' the rest of the script from executing.</p>
 <h3>Out with the old, in with the new</h3>
-<p>After research and some advice from a couple guys in the developer guild I had been trying out,
-I decided that it was time I learned to program for concurrency in Python.</p>
-<p>The terminology was confusing at first and since I didn't have experience with programming for
-concurrency before, it felt like my brain had joined a gymnastics team. I spent the next couple days
-working remotely in a coffee shop to escape the constant walk-by question assaults that are so common
-with an open office environment. I love helping out my colleagues, but I also needed to focus in on
-wrapping my head around programming for concurrency in python.</p>
+<p>After some research and recommendations from a couple guys in a local developer's guild,
+I came to the conclusion that I needed to learn how to program for concurrency in Python. This means
+I can query all these endpoints at virtually the same time. So my time constraint would change from the
+sum of all the API queries to the the longest running API query (in most cases).</p>
 <p>I eventually got it working. After rewriting the script to use a combination of <code>asyncio</code> and
-<code>aiohttp</code>, I was able to pull down roughly thirteen hours of logs (500,000+ logs) in twenty seconds.
-Using the original script and the <code>requests</code> library, it took twenty minutes to pull down the
-same amount of logs.</p>
-<p>I was a bit startled by the performance gains. Now I use <code>asyncio</code> any time I see that my task
-at hand is I/O bound.</p>
+<code>aiohttp</code>, I was able to pull down roughly thirteen hours worth of logs in twenty seconds.
+Using the original script and the <code>requests</code> library, it took twenty minutes to pull down the logs from
+the same time frame.</p>
 <p>Although I finally got the script working with concurrency built-in, I had a difficult time changing
 from a single-threaded mindset to an asynchronous mindset in Python. In addition, it was a whole new
-set of terms and libraries to learn. With this post, I'm sharing the mental model I use when programming
-asynchronously with Python in hopes it will help others side-step the learning curve.</p>
-<h1>Concepts, Entities, and Relationships</h1>
+set of terms and libraries to learn. It made me tweak the way I thought about programming in Python.</p>
+<p>Knowing the learning curve involved with understanding and changing your programming to suit concurrency,
+I will share in this post how I model concurrency programming mentally in hopes it will help someone else
+side-step the learning curve.</p>
 <h2>Concepts</h2>
-<p>I don't want to re-invent the wheel here so I'm including a few links that you should read first if
-you don't already know why/how one would program for concurrency in Python:</p>
+<p>I don't want to re-invent the wheel here so I'm including a few links that you should read if you feel like
+you're missing part of the picture with what I write:</p>
 <ul>
 <li><a href="https://realpython.com/python-concurrency/">Real Python: Speed Up Your Python Program With Concurrency</a>.</li>
 <li><a href="https://realpython.com/python-gil/">Real Python: What is the Python Global Interpreter Lock (GIL)?</a></li>
 </ul>
-<p>For our purposes, it is important to note that the O365 script is I/O bound. It 'blocks' the
-next instruction from executing every time it waits on a response from the O365 API if you use a
-non-asynchronous library like <code>requests</code>.</p>
-<p>Another note is that my writing here assumes you are using <code>asyncio</code> in Python 3.5+. The keywords
-that <code>asyncio</code> uses in my examples below were not introduced until Python 3.5 (<code>async</code> and
-<code>await</code>)</p>
-<p>Some of my examples and portions of my 'mental model' are not designed for atomic accuracy. They are
+<h4>Some things to keep in mind as you read on:</h4>
+<ul>
+<li>The O365 script is I/O bound. So it will be doing quite a bit of waiting for responses. This makes it
+a perfect candidate for using concurrency in python.</li>
+<li>My writing and examples assume you are using <code>asyncio</code> in Python 3.7+. The keywords
+that <code>asyncio</code> uses in my examples were not introduced until Python 3.5 (<code>async</code> and
+<code>await</code>). Also, there are some great features introduced in Python 3.7 that abstract some of
+the low-level functionality like event loops. I recommend using Python 3.7 if at all possible.</li>
+<li>Some of my examples and portions of my 'mental model' are not designed for atomic accuracy. They are
 designed so that you can quickly make programming decisions by having a fundamental model to use
-as you think about programming for concurrency with Python.</p>
-<p>Keep in mind that concurrency programming in Python is a lot like playing a game of
-sequential <strong>hot potato</strong> where you can only pass the potato to the next person in line.
-I'll explain more in a bit.</p>
-<h2>The Entities</h2>
+as you think about programming for concurrency with Python.</li>
+</ul>
 <h3>Futures</h3>
-<p>I think of a future as a response. If I'm sending an HTTP GET to a REST API, then a Future would be the
-response from that API. It's like a 'promise'. This 'promise' could be an actual return value or just
-a notification that a set of instructions has completed execution.</p>
+<p>A future is the promise of a return value. If I'm sending an HTTP GET to a REST API, then a Future would be the
+response from that API. This 'promise' could be an actual object,
+a notification that a set of instructions has completed execution, an exception, etc.</p>
 <h3>Coroutines</h3>
 <p>A coroutine is a set of instructions created using the <code>async</code> and <code>await</code> keywords. <code>async</code>
 let's the interpreter know that the instructions are a coroutine function while <code>await</code>
 means, "I'm going to be waiting on some sort of Future (aka response); Therefore, this is a good place
-in my instruction execution to allow other things to run while I'm waiting."</p>
+in my instructions to let someone else have a turn."</p>
 <h3>Tasks</h3>
-<p>A Task is an entity that knows how/when to wait on a Future and toss the hot potato to another
-task while he's waiting for the Future in question.</p>
-<p>How does a task know when he is waiting on a Future? He reads the instructions
-within the coroutine object that was used to create the task.</p>
-<p>Note: I have never had to manually create a Future. Awaiting within a coroutine instruction set
-magically handles that for you in most cases.</p>
-<h3>Event Loops</h3>
-<p>When you want to play hot potato (be given control to execute your instructions), you have to get in line
-with the other tasks. That line (or as our European friends would call, '<strong>queue</strong>') is the event loop.
-It's a place where tasks go to be in a 'queue' so that they can be given a turn at executing their
-instructions.</p>
-<h2>Relationships</h2>
-<ul>
-<li>A future is a promise that you will get something in return (even if it is just a notification that
-an instruction set has completed). A Task knows how/when to wait on a Future (promise).</li>
-<li>A coroutine is a set of instructions that can have a point of 'waiting'. A task is created from a
-coroutine.</li>
-<li>The task handles/knows three things:<ol>
-<li>When it's his turn in the event loop to execute the coroutine instructions.</li>
-<li>Handles sending/receiving the Future.</li>
-<li>Throwing the hot potato to the next guy when the coroutine instructions are awaiting a Future.</li>
-</ol>
-</li>
-<li>The event loop is a queue of tasks. When one task says "I'm waiting on something", the event loop
-will pass the potato to another task to execute.</li>
-</ul>
-<p>All of this event loop scheduling and such happens in the background.</p>
-<p>A rule of thumb I use is: "If this set of instructions / coroutine will be waiting on a Future (response)
-of any kind, put it in the event loop (wrap it with a task and put it in the event loop)!"</p>
-<h2>Order of operations</h2>
+<p>I think of a task as doing three things:</p>
 <ol>
-<li>Define your instructions (Coroutine)</li>
-<li>Dump the coroutine object into the event loop via creating a task or task(s)</li>
-<li>Wait for the output (if applicable)</li>
+<li>Runs a coroutine in an event loop.</li>
+<li>Knows when he should pass control back to the event loop so someone else can have a turn (sees the <code>await</code>
+in his coroutine's instructions)</li>
+<li>When it's his turn in the event loop, knows whether his future has returned or whether he is still waiting
+and should skip his turn.</li>
 </ol>
-<h4>Creating a coroutine</h4>
-<p>Here's an example of a simple coroutine in Python 3.5+:</p>
+<h3>Event Loops</h3>
+<p>I think of an event loop like a <code>queue</code> full of tasks. Tasks jump in the queue and the event loop will
+iterate through the tasks one by one. If a task is ready to execute instructions, the event loop will hand
+that task control. If a task is not ready to execute instructions, the event loop will move on to the next
+task. This happens over and over until all tasks have completed.</p>
+<p>The beauty of an event loop is that you as a programmed just have to give it a task which is created from a
+coroutine. The event loop does all the scheduling and management for you.</p>
+<h2>Working with the concepts</h2>
+<p>Good news about <code>asyncio</code> and Python 3.5+ is that you probably won't have to deal with
+Futures directly. In many cases, you won't even have to deal with Tasks directly.</p>
+<p>In Python 3.7, <code>asyncio</code> introduced <code>asyncio.get_running_loop()</code>. This means that you don't have to
+pass your loop context throughout yoru code! And in the instances that I have used <code>asyncio</code> in Python 3.7,
+I don't have to directly interact with the event loop either.</p>
+<p>Most cases you will only be required to write a coroutine, and then run that coroutine. The <code>asyncio</code> library
+will handle all the details with futures, tasks, and event loops. I'll give a few examples below.</p>
+<p>It's still good to have a quick mental model for the concepts that are written about above. The mental models
+are especially handy if you have to perform any troubleshooting or in-depth/low-level programming for
+concurrency with <code>asyncio</code>.</p>
+<h3>Writing a coroutine</h3>
+<p>There were two things I found confusing about coroutines when I first started with the <code>asyncio</code> library:</p>
+<ol>
+<li>The <code>async</code> and <code>await</code> syntax.</li>
+<li>How you run a coroutine.</li>
+</ol>
+<h4>Syntax</h4>
+<ul>
+<li><code>async</code> tells the interpreter that you are writing a coroutine function and not a regular function.</li>
+<li><code>await</code> is part of your coroutine instructions that basically says "I will be waiting for a response (Future)
+here, so this is a good time to give someone else control if they have instructions they need to process"</li>
+</ul>
+<h4>Running a coroutine</h4>
+<p>If you call a coroutine function like you do a normal function, you are going to be disappointed. Instead of
+executing the instructions, calling a coroutine returns to you a coroutine object. This object is what's used
+to create tasks so that the coroutine can be run in an event loop.</p>
 <table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
  2
  3
@@ -281,20 +252,46 @@ of any kind, put it in the event loop (wrap it with a task and put it in the eve
 
 <span class="c1"># Regular function</span>
 <span class="k">def</span> <span class="nf">my_function</span><span class="p">(</span><span class="n">duration</span><span class="p">):</span>
-    <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">duration</span><span class="p">)</span>  <span class="c1"># This will block any other instructions from being processed.</span>
-    <span class="k">return</span> <span class="s2">&quot;I&#39;m done sleeping after {} seconds&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">duration</span><span class="p">)</span>
+    <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">duration</span><span class="p">)</span>
+    <span class="k">return</span> <span class="s2">&quot;I slept for {duration} seconds&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">duration</span><span class="p">)</span>
 
 
 <span class="c1"># Coroutine</span>
 <span class="n">async</span> <span class="k">def</span> <span class="nf">my_coroutine</span><span class="p">(</span><span class="n">duration</span><span class="p">):</span>
-    <span class="n">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">duration</span><span class="p">)</span>  <span class="c1"># Lets the event loop give other instructions a turn while we wait.</span>
-    <span class="k">return</span> <span class="s2">&quot;I&#39;m done sleeping after {} seconds&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">duration</span><span class="p">)</span>
+    <span class="n">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">duration</span><span class="p">)</span>
+    <span class="k">return</span> <span class="s2">&quot;I slept for {} seconds&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">duration</span><span class="p">)</span>
 </pre></div>
 </td></tr></table>
 
-<h4>Running a coroutine</h4>
-<p>You cannot call a coroutine like a normal function and expect it to run; However, Python 3.7 gives you
-three ways in which you can run a coroutine:</p>
+<p>Now let's call the function and coroutine function:</p>
+<table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre>1
+2
+3
+4
+5</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="n">my_function</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+<span class="s2">&quot;I slept for 5 seconds&quot;</span>
+
+<span class="n">my_coroutine</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+<span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">lt</span><span class="p">;</span><span class="n">coroutine</span> <span class="nb">object</span> <span class="n">my_coroutine</span> <span class="n">at</span> <span class="mh">0x7ff576a5bb48</span><span class="o">&amp;</span><span class="n">amp</span><span class="p">;</span><span class="n">gt</span><span class="p">;</span>
+</pre></div>
+</td></tr></table>
+
+<p>So how do we actually get a coroutine to run?  You need an event loop, and you need to wrap the coroutine
+in a task to be run in the event loop. In my examples, <code>asyncio</code> handles the event loop generation and
+task generation in the background EXCEPT for the <code>asyncio.create_task</code> coroutine. In that case, you need
+to make sure you are calling that function with an event loop already running. I will handle manual task
+creation in another post, however.</p>
+<ol>
+<li>Use <code>asyncio.run()</code>. For example: <code>asyncio.run(my_couroutine(4))</code></li>
+<li>You can <code>await</code> a coroutine within another coroutine. In the example above, <code>asyncio.sleep</code> is another
+coroutine.</li>
+<li>Create a task directly with the coroutine with <code>asyncio.create_task()</code>. For example:
+<code>my_task = asyncio.create_task(my_coroutine(4))</code>.</li>
+</ol>
+<p>What if you have a couple thousand URLs that you want to query at the same time? If you have all those URLs
+handy, you may want to <strong>gather</strong> them up and <strong>dump</strong> them all into the event loop at the same time.
+In order to do this, you could use the <code>asyncio.gather()</code> coroutine.</p>
+<p>For example:</p>
 <table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
  2
  3
@@ -311,76 +308,53 @@ three ways in which you can run a coroutine:</p>
 14
 15
 16
-17
-18
-19
-20
-21
-22
-23
-24
-25
-26
-27
-28
-29
-30
-31
-32
-33
-34
-35
-36
-37
-38</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="n">my_function</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
-<span class="s2">&quot;I&#39;m done sleeping after 5 seconds&quot;</span>
+17</pre></div></td><td class="code"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">asyncio</span>
+<span class="kn">from</span> <span class="nn">some_async_request_coroutines</span> <span class="kn">import</span> <span class="n">http_request</span>
 
-<span class="n">my_coroutine</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
-<span class="o">&amp;</span><span class="n">lt</span><span class="p">;</span><span class="n">coroutine</span> <span class="nb">object</span> <span class="n">my_coroutine</span> <span class="n">at</span> <span class="mh">0x7ff576a5bb48</span><span class="o">&amp;</span><span class="n">gt</span><span class="p">;</span>
+<span class="n">async</span> <span class="k">def</span> <span class="nf">get_all_urls</span><span class="p">(</span><span class="n">list_of_urls</span><span class="p">):</span>
+    <span class="n">coroutines</span> <span class="o">=</span> <span class="p">[</span><span class="n">http_request</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">url</span><span class="o">=</span><span class="n">url</span><span class="p">)</span> <span class="k">for</span> <span class="n">url</span> <span class="ow">in</span> <span class="n">list_of_urls</span><span class="p">]</span>
+    <span class="n">responses</span> <span class="o">=</span> <span class="n">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="o">*</span><span class="n">coroutines</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">responses</span>
 
+<span class="n">desired_urls</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">&quot;https://google.com&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;https://yahoo.com&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;https://wikipedia.org&quot;</span><span class="p">,</span>
+<span class="p">]</span>
 
-<span class="kn">import</span> <span class="nn">asyncio</span>
+<span class="n">sites</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">get_all_urls</span><span class="p">(</span><span class="n">desired_urls</span><span class="p">))</span>
 
-<span class="c1"># Method 1 - Let Pyton handle creating the event loop and such...</span>
-<span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">my_coroutine</span><span class="p">(</span><span class="mi">5</span><span class="p">))</span>
-<span class="s2">&quot;I&#39;m done sleeping after 5 seconds&quot;</span>
-
-<span class="c1"># Method 2 - Await it from another coroutine</span>
-<span class="n">async</span> <span class="k">def</span> <span class="nf">coro</span><span class="p">(</span><span class="n">duration</span><span class="p">):</span>
-    <span class="n">text</span> <span class="o">=</span> <span class="n">await</span> <span class="n">my_coroutine</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">text</span>
-
-<span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">coro</span><span class="p">(</span><span class="mi">5</span><span class="p">))</span>
-<span class="s2">&quot;I&#39;m done sleeping after 5 seconds&quot;</span>
-
-<span class="c1"># Method 3 - Creating a single task</span>
-<span class="c1"># In this example, I only create a single task which is run.</span>
-
-<span class="n">async</span> <span class="k">def</span> <span class="nf">coro</span><span class="p">():</span>
-<span class="n">task1</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">create_task</span><span class="p">(</span><span class="n">my_coroutine</span><span class="p">(</span><span class="mi">5</span><span class="p">))</span>
-<span class="n">task2</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">create_task</span><span class="p">(</span><span class="n">my_coroutine</span><span class="p">(</span><span class="mi">3</span><span class="p">))</span>
-<span class="n">task3</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">create_task</span><span class="p">(</span><span class="n">my_coroutine</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
-<span class="k">print</span><span class="p">(</span><span class="n">await</span> <span class="n">task1</span><span class="p">)</span>
-<span class="k">print</span><span class="p">(</span><span class="n">await</span> <span class="n">task2</span><span class="p">)</span>
-<span class="k">print</span><span class="p">(</span><span class="n">await</span> <span class="n">task3</span><span class="p">)</span>
-
-<span class="c1"># The following output appears all at the same time since the Futures</span>
-<span class="c1"># for task2 and task3 have already completed by the time task1 finishes.</span>
-
-<span class="n">I</span><span class="s1">&#39;m done sleeping for 5 seconds</span>
-<span class="n">I</span><span class="s1">&#39;m done sleeping for 3 seconds</span>
-<span class="n">I</span><span class="s1">&#39;m done sleeping for 1 seconds</span>
+<span class="n">do_something_with_html_from_sites</span><span class="p">(</span><span class="n">sites</span><span class="p">)</span>
 </pre></div>
 </td></tr></table>
 
-<h4>"Dumping" into the event loop</h4>
-<p>So you have seen how to add a coroutine one at a time into the event loop through methods of
-creating tasks, awaiting, or using the asyncio.run() function. But that's not entirely helpful
-when you're trying to pull down logs from one-thousand different endpoints at the same time.</p>
-<p>This is where the <code>asyncio.gather()</code> coroutine comes in handy. If I need to call out to
-one-thousand API endpoints to pull down logs at the same time, you can create all your coroutine
-objects witha  list comprehension and then "gather" all of them into the event loop.</p>
-<h1>TO BE CONTINUED......</h1>
+<p>In <code>get_all_urls</code> for this example:</p>
+<ol>
+<li>We create a coroutine for each URL that is to be queried.</li>
+<li>We gather all those coroutines, they're made into tasks (done in the background of <code>asyncio.gather</code>),
+and then they are dumped into the event loop... again behind the scenes.</li>
+<li>Once we get the response back from all the tasks we just gathered / dumped into the event loop, we return
+the list of those values.</li>
+</ol>
+<h3>You need an entry point</h3>
+<p>As of Python 3.7, you can use <code>asyncio.run()</code> as your entry point into your concurrency
+programming.</p>
+<ol>
+<li>Write your coroutines.</li>
+<li>Write a coroutine called <code>main</code> that will serve as your first coroutine that will await
+or gather any other coroutines that need to run.</li>
+<li>Run the first or 'main' coroutine of your program by calling it via <code>asyncio.run(main())</code></li>
+</ol>
+<p>When you call <code>asyncio.run()</code>, it automatically handles setting up an event loop and wraps your
+<code>main</code> coroutine into a task. When completed, <code>asyncio.run()</code> will automatically close the
+event loop.</p>
+<p>If you need to add tasks to the event loop throughout your code, that's fine. Design it in a
+way that it all happens within your <code>main()</code> coroutine or in child coroutines.</p>
+<h2>In closing</h2>
+<p>I hope that by reading this post you have a better understanding of how to 'think' about using the
+<code>asyncio</code> library. It really helps with heavy I/O bound scripts or programs. In future posts,
+I plan to dive a little deeper into event loops, tasks, and futures as they're happening in the background.
+This type of knowledge is handy for more complex programs and if you're using older versions of Python3.</p>
       </div><!-- .entry-content -->
       <br /><br />
       <div class="article_meta">
